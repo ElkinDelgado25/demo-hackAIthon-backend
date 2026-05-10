@@ -504,6 +504,23 @@ Ejecuta:
 python -m pip install -r requirements.txt
 ```
 
+### Error de Passlib con bcrypt 5
+
+Si aparece:
+
+```text
+error reading bcrypt version
+ValueError: password cannot be longer than 72 bytes
+```
+
+Instala la version compatible:
+
+```bash
+python -m pip install bcrypt==4.0.1
+```
+
+`passlib==1.7.4` no es compatible con `bcrypt==5.0.0`. Por eso `requirements.txt` fija `bcrypt==4.0.1`.
+
 ### MongoDB no conecta
 
 Verifica:
