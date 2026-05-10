@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     default_admin_full_name: str = "AuditIA Admin"
 
     openai_api_key: str | None = None
+    openai_model: str = "gpt-3.5-turbo"
+    openai_temperature: float = 0.1
     chroma_collection: str = "auditia_documents"
 
     @field_validator("backend_cors_origins", "upload_allowed_extensions", mode="before")
