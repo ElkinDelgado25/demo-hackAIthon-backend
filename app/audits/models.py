@@ -1,26 +1,35 @@
+# app/audits/models.py
 from datetime import datetime
-from typing import Any
+from typing import List, Optional
+from beanie import Document
+from pydantic import BaseModel
+from enum import Enum
 
-from beanie import Document, PydanticObjectId
-from pydantic import Field
 
-from app.shared.enums import CaseStatus
-from app.shared.schemas import utc_now
+class AuditStatus(str, Enum):
+    APROBADO = "aprobado"
+    RECHAZADO = "rechazado"
+    OBSERVACIONES = "observaciones"
+    PENDIENTE = "pendiente"
+
+
+class Discrepancia(BaseModel):
+    tipo: str  # precio_excedido, duplicado, incoherencia_siniestro, item_no_tarifado
+    descripcion: str
+    item: Optional[str] = None
+    valor_esperado: Optional[float] = None
+    valor_encontrado: Optional[float] = None
 
 
 class Audit(Document):
-    audit_id: str
-    case_id: PydanticObjectId
-    case_claim_number: str
-    status: CaseStatus
-    confidence: float = 0
-    summary: str = "Dato no disponible"
-    discrepancies: list[dict[str, Any]] = Field(default_factory=list)
-    recommendation: str | None = None
-    documents: list[dict[str, Any]] = Field(default_factory=list)
-    executed_by: PydanticObjectId | None = None
-    source: str | None = None
-    created_at: datetime = Field(default_factory=utc_now)
-
+    case_id: str
+    document_name: str
+    status: AuditStatus
+    total_discrepancias: int
+    discrepancias: List[Discrepancia]
+    resumen_ejecutivo: str
+    detalles_auditoria: dict
+    created_at: datetime
+    
     class Settings:
         name = "audits"
