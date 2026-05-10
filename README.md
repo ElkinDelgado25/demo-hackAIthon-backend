@@ -59,7 +59,7 @@ Soluciones:
 Desde la carpeta del backend:
 
 ```bash
-python -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\activate
 python -m pip install -r requirements.txt
 copy .env.example .env
@@ -111,8 +111,11 @@ Primero levanta MongoDB. Luego:
 
 ```bash
 .venv\Scripts\activate
+python --version
 uvicorn app.main:app --reload
 ```
+
+El comando `python --version` debe mostrar Python 3.13.x.
 
 URLs:
 
