@@ -1,0 +1,21 @@
+from datetime import datetime, timezone
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
+
+def to_camel(value: str) -> str:
+    parts = value.split("_")
+    return parts[0] + "".join(part.capitalize() for part in parts[1:])
+
+
+class ApiModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, use_enum_values=True)
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def public_id(value: Any) -> str:
+    return str(value)
