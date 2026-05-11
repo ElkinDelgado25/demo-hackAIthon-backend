@@ -125,6 +125,48 @@ URLs:
 - OpenAPI JSON: `http://localhost:8000/api/openapi.json`
 - Healthcheck: `http://localhost:8000/health`
 
+## Deploy En Render
+
+Este repo incluye `.python-version` con:
+
+```text
+3.13.4
+```
+
+Tambien incluye `runtime.txt` con:
+
+```text
+python-3.13.4
+```
+
+Render debe usar Python 3.13.4. No uses Python 3.14 para este proyecto por ahora, porque `pydantic-core==2.27.2` puede intentar compilarse con Rust durante el build y fallar en Render.
+
+En Render configura:
+
+```bash
+Build Command: pip install -r requirements.txt
+Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Variables necesarias en Render:
+
+```bash
+MONGODB_URI=mongodb+srv://...
+MONGODB_DB=auditoria_siniestros
+JWT_SECRET_KEY=un-secreto-largo-y-seguro
+AUTH_REQUIRED=false
+BACKEND_CORS_ORIGINS=https://tu-frontend.onrender.com,http://localhost:5173
+OPENAI_API_KEY=...
+```
+
+Si Render sigue usando Python 3.14, agrega tambien una variable de entorno:
+
+```bash
+PYTHON_VERSION=3.13.4
+```
+
+Luego ejecuta un nuevo deploy con cache limpia.
+
 ## Integracion Con Frontend
 
 El frontend debe apuntar a:
