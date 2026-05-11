@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import Field
 
-from app.shared.enums import CaseStatus, DocumentType
+from app.shared.enums import CaseStatus, DocumentType, ParseStatus
 from app.shared.schemas import ApiModel
 
 
@@ -57,14 +57,19 @@ class DocumentRead(ApiModel):
     id: str
     case_id: str
     document_type: DocumentType
+    type: DocumentType | str
     name: str
+    original_name: str
     size: int
-    type: str
+    extension: str
     mime_type: str
     uploaded_at: datetime
     status: str
+    parse_status: ParseStatus
+    parse_error: str | None = None
     extraction_status: str | None = None
 
 
 class DocumentsResponse(ApiModel):
+    case_id: str | None = None
     documents: list[DocumentRead]

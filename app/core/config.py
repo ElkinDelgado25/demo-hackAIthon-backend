@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
 
     upload_max_total_bytes: int = 20 * 1024 * 1024
-    upload_allowed_extensions: list[str] | str = Field(default_factory=lambda: ["pdf", "csv", "xlsx", "json", "png", "jpg", "jpeg"])
+    upload_allowed_extensions: list[str] | str = Field(default_factory=lambda: ["pdf", "csv", "xlsx", "json", "png", "jpg", "jpeg", "txt"])
     upload_local_dir: Path = Path("storage/uploads")
 
     default_admin_email: str = "admin@example.com"

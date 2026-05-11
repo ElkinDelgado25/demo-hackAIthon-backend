@@ -4,7 +4,7 @@ from typing import Any
 from beanie import Document, Indexed, PydanticObjectId
 from pydantic import Field
 
-from app.shared.enums import CaseStatus, DocumentType
+from app.shared.enums import CaseStatus, DocumentType, ParseStatus
 from app.shared.schemas import utc_now
 
 
@@ -32,10 +32,14 @@ class CaseDocument(Document):
     case_claim_number: str
     document_type: DocumentType
     name: str
+    original_name: str | None = None
     size: int
     mime_type: str
     extension: str
     storage_path: str
+    extracted_text: str = ""
+    parse_status: ParseStatus = ParseStatus.RECIBIDO
+    parse_error: str | None = None
     status: str = "cargado"
     extraction_status: str | None = "pendiente"
     uploaded_by: PydanticObjectId | None = None

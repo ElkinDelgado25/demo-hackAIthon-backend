@@ -123,7 +123,7 @@ JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 UPLOAD_MAX_TOTAL_BYTES=20971520
-UPLOAD_ALLOWED_EXTENSIONS=pdf,csv,xlsx,json,png,jpg,jpeg
+UPLOAD_ALLOWED_EXTENSIONS=pdf,csv,xlsx,json,png,jpg,jpeg,txt
 UPLOAD_LOCAL_DIR=storage/uploads
 
 DEFAULT_ADMIN_EMAIL=admin@example.com
@@ -269,7 +269,9 @@ POST /api/cases/{caseId}/documents
 Auditorias:
 
 ```text
+POST /api/audit/batch
 POST /api/audit/{caseId}
+POST /api/audit/{caseId}/final-verdict
 GET /api/audit/{caseId}/latest
 GET /api/audit/{caseId}/history
 ```
@@ -338,6 +340,24 @@ Respuesta de dashboard sin datos:
 
 El frontend debe tratar listas vacias y contadores en cero como estados validos, no como errores de conexion.
 
+Respuesta de auditoria:
+
+```json
+{
+  "caseId": "SIN-2026-004",
+  "status": "OBSERVADO",
+  "riskScore": 75,
+  "summary": "Auditoria completada con hallazgos.",
+  "invoiceTotal": 1200,
+  "expectedTotal": 950,
+  "difference": 250,
+  "findings": [],
+  "discrepancies": [],
+  "topReasons": [],
+  "recommendation": "Solicitar sustento adicional."
+}
+```
+
 ## Carga De Documentos
 
 Endpoint:
@@ -369,6 +389,24 @@ Ejemplo de `documents`:
 
 La cantidad de items en `documents` debe coincidir con la cantidad de archivos enviados en `files`.
 
+Los archivos se guardan en:
+
+```text
+storage/uploads/{caseId}/{documentId}/{filename}
+```
+
+Cada documento queda asociado al caso en MongoDB con metadata, texto extraido y estado de parseo.
+
+Estados de parseo:
+
+```text
+RECIBIDO
+PROCESANDO
+PROCESADO
+OCR_PENDIENTE
+ERROR
+```
+
 ## Estados Y Enums
 
 Estados de caso:
@@ -391,6 +429,9 @@ FACTURA
 ORDEN_REPARACION
 DETALLE_MANO_OBRA
 FOTOS_DANIO
+TARIFARIO
+POLIZA
+SUSTENTO_ADICIONAL
 ```
 
 Roles:
@@ -470,6 +511,12 @@ Probar OpenAI:
 
 ```bash
 python test_openai.py
+```
+
+Cargar datos demo:
+
+```bash
+python -m app.database.seed_demo
 ```
 
 Probar API desplegada:

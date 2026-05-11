@@ -31,7 +31,7 @@ async def patch_case_status(case_id: str, payload: CaseStatusUpdate) -> CaseRead
 
 @router.get("/{case_id}/documents", response_model=DocumentsResponse)
 async def get_case_documents(case_id: str) -> DocumentsResponse:
-    return DocumentsResponse(documents=await list_documents(case_id))
+    return DocumentsResponse(case_id=case_id, documents=await list_documents(case_id))
 
 
 @router.post("/{case_id}/documents", response_model=DocumentsResponse, status_code=201)
@@ -41,4 +41,4 @@ async def post_case_documents(
     files: Annotated[list[UploadFile], File()],
     documents: Annotated[str, Form()],
 ) -> DocumentsResponse:
-    return DocumentsResponse(documents=await upload_documents(case_id, files, documents, current_user))
+    return DocumentsResponse(case_id=case_id, documents=await upload_documents(case_id, files, documents, current_user))

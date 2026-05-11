@@ -1,15 +1,25 @@
 from fastapi import APIRouter, Depends
 
-from app.audits.schemas import AuditHistoryResponse, AuditRead, AuditRunRequest
-from app.audits.service import get_audit_history, get_latest_audit, run_audit
+from app.audits.schemas import AuditBatchRequest, AuditBatchResponse, AuditHistoryResponse, AuditRead, AuditRunRequest
+from app.audits.service import get_audit_history, get_latest_audit, run_audit, run_batch_audit, run_final_verdict
 from app.core.dependencies import CurrentUser, get_current_user
 
 router = APIRouter(prefix="/audit", tags=["audits"], dependencies=[Depends(get_current_user)])
 
 
+@router.post("/batch", response_model=AuditBatchResponse)
+async def post_batch_audit(payload: AuditBatchRequest, current_user: CurrentUser) -> AuditBatchResponse:
+    return AuditBatchResponse(audits=await run_batch_audit(payload, current_user))
+
+
 @router.post("/{case_id}", response_model=AuditRead)
 async def post_audit(case_id: str, payload: AuditRunRequest, current_user: CurrentUser) -> AuditRead:
     return await run_audit(case_id, payload, current_user)
+
+
+@router.post("/{case_id}/final-verdict", response_model=AuditRead)
+async def post_final_verdict(case_id: str, current_user: CurrentUser) -> AuditRead:
+    return await run_final_verdict(case_id, current_user)
 
 
 @router.get("/{case_id}/latest", response_model=AuditRead)

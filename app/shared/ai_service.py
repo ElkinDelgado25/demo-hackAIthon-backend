@@ -1,80 +1,147 @@
-import re
 import json
-from app.core.config import settings
-# Nueva forma de importar en LangChain >= 0.3
-from langchain_openai import ChatOpenAI
+import re
+from typing import Any
+
 from langchain.schema import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+
+from app.core.config import settings
+
+AUDITIA_SYSTEM_MESSAGE = """Eres AuditIA, un agente auditor especializado exclusivamente en siniestros vehiculares y auditoria documental para aseguradoras.
+
+Tu funcion es analizar:
+
+* casos de siniestros
+* polizas
+* cobertura
+* tarifarios
+* facturas
+* ordenes de reparacion
+* detalle de mano de obra
+* repuestos
+* insumos
+* fotografias del dano
+* sustento documental
+* discrepancias financieras y operativas
+
+Debes detectar:
+
+* cobros duplicados
+* precios superiores al tarifario
+* mano de obra excesiva
+* documentos faltantes
+* items fuera de cobertura
+* items no relacionados con los danos reportados
+* inconsistencias entre factura, poliza y siniestralidad
+* casos que requieran revision humana
+
+NO debes:
+
+* inventar informacion
+* responder temas fuera del dominio asegurador
+* realizar busquedas externas
+* responder programacion general
+* hablar de politica o entretenimiento
+
+Si falta informacion responde:
+'Dato no disponible'
+e indica exactamente que dato hace falta.
+
+La salida debe ser:
+
+* objetiva
+* tecnica
+* estructurada
+* corta y trazable
+
+Siempre devolver:
+
+* status sugerido
+* findings
+* severidad
+* recommendation
+* discrepancies
+* documentos faltantes"""
+
 
 class AIService:
-    def __init__(self):
-        # Verificar que la API key existe
+    def __init__(self) -> None:
         if not settings.openai_api_key:
-            raise ValueError(
-                "OPENAI_API_KEY no configurada. "
-                "Agrégala en tu archivo .env"
-            )
-        
+            self.llm = None
+            return
+
         self.llm = ChatOpenAI(
-            api_key=settings.openai_api_key,  # ← Toma del .env automáticamente
+            api_key=settings.openai_api_key,
             model=settings.openai_model,
-            temperature=settings.openai_temperature
+            temperature=settings.openai_temperature,
         )
+
     async def extract_invoice_items(self, text: str) -> list:
-        """Extrae items de factura desde texto no estructurado"""
         prompt = f"""
-        Extrae todos los items de esta factura médica.
-        
+        Extrae todos los items de esta factura de reparacion vehicular.
+
         Factura:
-        {text[:2000]}
-        
-        Responde SOLO con JSON en este formato:
-        [{{"nombre": "descripcion del item", "cantidad": 1, "precio_unitario": 100.0, "tipo": "insumo"}}]
-        
+        {text[:4000]}
+
+        Responde SOLO con JSON:
+        [{{"nombre": "descripcion", "cantidad": 1, "precio_unitario": 100.0, "tipo": "repuesto|mano_obra|insumo"}}]
+
         Si no hay items claros, responde: []
         """
-        
-        try:
-            response = await self.llm.apredict(prompt)
-            # Limpiar markdown si existe
-            clean = re.sub(r'```json\n?|```', '', response.strip())
-            return json.loads(clean)
-        except Exception as e:
-            print(f"Error extrayendo items: {e}")
+
+        if not self.llm:
             return []
-    
-    async def detect_anomalies(self, items: list, case_info: dict) -> dict:
-        """Detecta anomalías en los items facturados"""
+
+        try:
+            response = await self.llm.apredict_messages([
+                SystemMessage(content=AUDITIA_SYSTEM_MESSAGE),
+                HumanMessage(content=prompt),
+            ])
+            return json.loads(_clean_json(response.content))
+        except Exception:
+            return []
+
+    async def audit_case(self, context: dict[str, Any]) -> dict[str, Any]:
+        if not self.llm:
+            return {}
+
         prompt = f"""
-        Eres un auditor de seguros. Analiza estos items facturados contra el caso.
-        
-        Items facturados:
-        {json.dumps(items, indent=2)}
-        
-        Información del siniestro:
-        - Tipo: {case_info.get('tipo', 'no especificado')}
-        - Diagnóstico: {case_info.get('diagnostico', 'no especificado')}
-        - Insumos esperados: {case_info.get('insumos_esperados', [])}
-        - Honorarios esperados: {case_info.get('honorarios_esperados', [])}
-        
-        Detecta:
-        1. Items con precio sospechosamente alto
-        2. Items que no corresponden al tipo de siniestro
-        3. Posibles duplicados
-        
-        Responde SOLO con JSON:
+        Analiza este caso y devuelve SOLO JSON valido.
+
+        Contexto:
+        {json.dumps(context, ensure_ascii=False, indent=2)[:12000]}
+
+        Formato:
         {{
-            "anomalias": [
-                {{"tipo": "precio_alto|item_inconsistente|duplicado", "descripcion": "detalle", "item": "nombre del item"}}
-            ],
-            "es_valido": true/false,
-            "recomendacion": "texto breve"
+          "status": "APROBADO|OBSERVADO|DENEGADO|REVISION_HUMANA",
+          "riskScore": 0,
+          "summary": "texto breve",
+          "findings": [],
+          "discrepancies": [],
+          "topReasons": [],
+          "recommendation": "texto breve"
         }}
         """
-        
+
         try:
-            response = await self.llm.apredict(prompt)
-            clean = re.sub(r'```json\n?|```', '', response.strip())
-            return json.loads(clean)
-        except Exception as e:
-            print(f"Error detectando anomalías: {e}")
-            return {"anomalias": [], "es_valido": True, "recomendacion": "No se pudo analizar con IA"}
+            response = await self.llm.apredict_messages([
+                SystemMessage(content=AUDITIA_SYSTEM_MESSAGE),
+                HumanMessage(content=prompt),
+            ])
+            return json.loads(_clean_json(response.content))
+        except Exception:
+            return {}
+
+    async def detect_anomalies(self, items: list, case_info: dict) -> dict:
+        result = await self.audit_case({"items": items, "caseInfo": case_info})
+        if not result:
+            return {"anomalias": [], "es_valido": True, "recomendacion": "Dato no disponible"}
+        return {
+            "anomalias": result.get("discrepancies", []),
+            "es_valido": result.get("status") == "APROBADO",
+            "recomendacion": result.get("recommendation", "Dato no disponible"),
+        }
+
+
+def _clean_json(value: str) -> str:
+    return re.sub(r"```json\n?|```", "", value.strip())

@@ -1,35 +1,47 @@
-# app/audits/models.py
 from datetime import datetime
-from typing import List, Optional
-from beanie import Document
-from pydantic import BaseModel
-from enum import Enum
+from typing import Any
 
+from beanie import Document, PydanticObjectId
+from pydantic import Field, field_validator
 
-class AuditStatus(str, Enum):
-    APROBADO = "aprobado"
-    RECHAZADO = "rechazado"
-    OBSERVACIONES = "observaciones"
-    PENDIENTE = "pendiente"
-
-
-class Discrepancia(BaseModel):
-    tipo: str  # precio_excedido, duplicado, incoherencia_siniestro, item_no_tarifado
-    descripcion: str
-    item: Optional[str] = None
-    valor_esperado: Optional[float] = None
-    valor_encontrado: Optional[float] = None
+from app.shared.enums import CaseStatus
+from app.shared.schemas import utc_now
 
 
 class Audit(Document):
-    case_id: str
-    document_name: str
-    status: AuditStatus
-    total_discrepancias: int
-    discrepancias: List[Discrepancia]
-    resumen_ejecutivo: str
-    detalles_auditoria: dict
-    created_at: datetime
-    
+    audit_id: str = Field(default_factory=lambda: f"AUD-LEGACY")
+    case_id: PydanticObjectId | str
+    case_claim_number: str = ""
+    status: CaseStatus = CaseStatus.OBSERVADO
+    risk_score: int = 0
+    confidence: float = 0
+    summary: str = "Dato no disponible"
+    invoice_total: float | None = None
+    expected_total: float | None = None
+    difference: float | None = None
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    discrepancies: list[dict[str, Any]] = Field(default_factory=list)
+    top_reasons: list[str] = Field(default_factory=list)
+    recommendation: str | None = None
+    documents: list[dict[str, Any]] = Field(default_factory=list)
+    final_verdict: str | None = None
+    is_final: bool = False
+    executed_by: PydanticObjectId | None = None
+    source: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, value: Any) -> CaseStatus | Any:
+        legacy_map = {
+            "aprobado": CaseStatus.APROBADO,
+            "rechazado": CaseStatus.DENEGADO,
+            "observaciones": CaseStatus.OBSERVADO,
+            "pendiente": CaseStatus.REVISION_HUMANA,
+        }
+        if isinstance(value, str):
+            return legacy_map.get(value.lower(), value)
+        return value
+
     class Settings:
         name = "audits"
