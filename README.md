@@ -578,3 +578,5 @@ Verifica:
 - Backend en `http://localhost:8000`.
 - Frontend con `VITE_API_BASE_URL=http://localhost:8000/api`.
 - CORS incluye `http://localhost:5173`.
+
+hola
