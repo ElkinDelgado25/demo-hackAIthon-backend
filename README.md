@@ -2,9 +2,7 @@
 
 Backend independiente para AuditIA. Expone una API REST con FastAPI para conectar el frontend React/Vite con datos reales en MongoDB, reemplazando progresivamente mocks y datos hardcodeados.
 
-## Estado Actual Del Proyecto
-
-El backend contiene:
+## Resumen Rapido
 
 - API FastAPI bajo el prefijo `/api`.
 - MongoDB con Beanie ODM.
@@ -13,7 +11,7 @@ El backend contiene:
 - Configuracion centralizada con Pydantic Settings.
 - CORS para el frontend Vite.
 - Manejo global de errores.
-- Modulos separados por dominio: auth, users, cases, audits, business rules, dashboard, database y shared.
+- Modulos por dominio: auth, users, cases, audits, business rules, dashboard, database y shared.
 - Servicio IA en `app/shared/ai_service.py` usando LangChain/OpenAI.
 - Parser de archivos en `app/shared/file_parser.py` para PDF, JSON, CSV y texto plano.
 - Script auxiliar `test_openai.py` para verificar configuracion de OpenAI.
