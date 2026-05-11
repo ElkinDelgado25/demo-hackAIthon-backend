@@ -1,198 +1,38 @@
 # AuditIA Backend
 
-Backend independiente para AuditIA. Expone una API REST con FastAPI para conectar el frontend React/Vite con datos reales en MongoDB, reemplazando progresivamente mocks y datos hardcodeados.
+Backend independiente para AuditIA construido con FastAPI, MongoDB y Beanie. Expone una API REST para conectar el frontend React/Vite con datos reales, reemplazando progresivamente mocks, hardcodes y simulaciones.
 
-## Resumen Rapido
+## Incluye
 
-- API FastAPI bajo el prefijo `/api`.
-- MongoDB con Beanie ODM.
+- FastAPI con Swagger/OpenAPI automatico.
+- MongoDB Atlas o local mediante Motor + Beanie.
 - Autenticacion JWT con `python-jose`.
-- Hash de passwords con Passlib/Bcrypt.
-- Configuracion centralizada con Pydantic Settings.
-- CORS para el frontend Vite.
+- Hash de contrasenas con Passlib + Bcrypt.
+- Configuracion con Pydantic Settings.
+- CORS configurable para Vite, Vercel o dominios propios.
 - Manejo global de errores.
-- Modulos por dominio: auth, users, cases, audits, business rules, dashboard, database y shared.
-- Servicio IA en `app/shared/ai_service.py` usando LangChain/OpenAI.
-- Parser de archivos en `app/shared/file_parser.py` para PDF, JSON, CSV y texto plano.
-- Script auxiliar `test_openai.py` para verificar configuracion de OpenAI.
-
-## Requisito Importante De Python
-
-Este proyecto usa `StrEnum` en `app/shared/enums.py`, por lo tanto requiere:
-
-```bash
-Python 3.11+
-```
-
-Si ejecutas el backend con Python 3.10, varios imports fallaran con:
-
-```text
-ImportError: cannot import name 'StrEnum' from 'enum'
-```
-
-Soluciones:
-
-- Recomendada: instalar y usar Python 3.11 o superior.
-- Alternativa: cambiar `StrEnum` por `str, Enum` en `app/shared/enums.py` si quieres soportar Python 3.10.
+- Validaciones con Pydantic v2.
+- Modulos separados por dominio.
+- Preparacion para IA con LangChain/OpenAI.
+- Parser basico de archivos para PDF, JSON, CSV y texto plano.
 
 ## Stack
 
-- Python 3.11+
+- Python 3.13.4
 - FastAPI
 - Uvicorn
 - MongoDB
 - Motor
-- Beanie ODM
+- Beanie
 - Pydantic v2
 - Pydantic Settings
-- JWT con `python-jose`
+- python-jose
 - Passlib + Bcrypt
 - LangChain
-- LangChain OpenAI
 - OpenAI SDK
 - PyPDF2
 
-## Instalacion
-
-Desde la carpeta del backend:
-
-```bash
-py -3.13 -m venv .venv
-.venv\Scripts\activate
-python -m pip install -r requirements.txt
-copy .env.example .env
-```
-
-Si cambiaste `requirements.txt`, vuelve a ejecutar:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-## Variables De Entorno
-
-Configura `.env` tomando como base `.env.example`.
-
-```bash
-APP_NAME=AuditIA API
-ENVIRONMENT=development
-API_PREFIX=/api
-BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=auditoria_siniestros
-
-AUTH_REQUIRED=false
-JWT_SECRET_KEY=change-me-use-a-long-random-secret
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-UPLOAD_MAX_TOTAL_BYTES=20971520
-UPLOAD_ALLOWED_EXTENSIONS=pdf,csv,xlsx,json,png,jpg,jpeg
-UPLOAD_LOCAL_DIR=storage/uploads
-
-DEFAULT_ADMIN_EMAIL=admin@example.com
-DEFAULT_ADMIN_PASSWORD=change-me
-DEFAULT_ADMIN_FULL_NAME=AuditIA Admin
-
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-3.5-turbo
-OPENAI_TEMPERATURE=0.1
-CHROMA_COLLECTION=auditia_documents
-```
-
-No guardes claves reales en Git. Si una API key fue expuesta, rotala desde el proveedor y usa la nueva solo en `.env`.
-
-## Ejecucion Local
-
-Primero levanta MongoDB. Luego:
-
-```bash
-.venv\Scripts\activate
-python --version
-uvicorn app.main:app --reload
-```
-
-El comando `python --version` debe mostrar Python 3.13.x.
-
-URLs:
-
-- API: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
-- Healthcheck: `http://localhost:8000/health`
-
-## Deploy En Render
-
-Este repo incluye `.python-version` con:
-
-```text
-3.13.4
-```
-
-Tambien incluye `runtime.txt` con:
-
-```text
-python-3.13.4
-```
-
-Render debe usar Python 3.13.4. No uses Python 3.14 para este proyecto por ahora, porque `pydantic-core==2.27.2` puede intentar compilarse con Rust durante el build y fallar en Render.
-
-En Render configura:
-
-```bash
-Build Command: pip install -r requirements.txt
-Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-Variables necesarias en Render:
-
-```bash
-MONGODB_URI=mongodb+srv://...
-MONGODB_DB=auditoria_siniestros
-JWT_SECRET_KEY=un-secreto-largo-y-seguro
-AUTH_REQUIRED=false
-BACKEND_CORS_ORIGINS=https://tu-frontend.onrender.com,http://localhost:5173
-OPENAI_API_KEY=...
-```
-
-Si Render sigue usando Python 3.14, agrega tambien una variable de entorno:
-
-```bash
-PYTHON_VERSION=3.13.4
-```
-
-Luego ejecuta un nuevo deploy con cache limpia.
-
-## Integracion Con Frontend
-
-El frontend debe apuntar a:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8000/api
-```
-
-El frontend actual puede operar en desarrollo sin token porque:
-
-```bash
-AUTH_REQUIRED=false
-```
-
-Para produccion:
-
-```bash
-AUTH_REQUIRED=true
-JWT_SECRET_KEY=un-secreto-largo-y-seguro
-```
-
-Cuando `AUTH_REQUIRED=true`, los endpoints protegidos esperan:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-## Arquitectura
+## Estructura
 
 ```text
 app/
@@ -237,160 +77,282 @@ app/
     enums.py
     file_parser.py
     schemas.py
-  analytics/
-  reports/
 ```
 
-## Modulos Principales
+## Instalacion Local
 
-### Auth
+Desde la carpeta del backend:
 
-Gestiona registro, login, token JWT y usuario actual.
+```bash
+py -3.13 -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+copy .env.example .env
+```
 
-### Users
+Ejecutar:
 
-Modelo de usuario, roles basicos y usuario administrador inicial.
+```bash
+python -m uvicorn app.main:app --reload
+```
 
-### Cases
+URLs locales:
 
-Gestion de casos/siniestros, consulta por `_id` o `claimNumber`, estados y documentos asociados.
+- API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
+- Healthcheck: `http://localhost:8000/health`
 
-### Audits
+## Variables De Entorno
 
-Ejecucion de auditorias, validacion de documentos obligatorios, historial y ultimo resultado.
+Configura `.env` desde `.env.example`.
 
-### Business Rules
+```env
+APP_NAME=AuditIA API
+ENVIRONMENT=development
+API_PREFIX=/api
+BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
-CRUD de reglas de negocio, toggle `ACTIVA`/`INACTIVA` y reglas usadas por el motor de auditoria.
+MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net
+MONGODB_DB=auditoria_siniestros
 
-### Dashboard
+AUTH_REQUIRED=false
+JWT_SECRET_KEY=change-me-use-a-long-random-secret
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
 
-Metricas agregadas, ultimas auditorias y razones de denegacion.
+UPLOAD_MAX_TOTAL_BYTES=20971520
+UPLOAD_ALLOWED_EXTENSIONS=pdf,csv,xlsx,json,png,jpg,jpeg
+UPLOAD_LOCAL_DIR=storage/uploads
 
-### Shared AI
+DEFAULT_ADMIN_EMAIL=admin@example.com
+DEFAULT_ADMIN_PASSWORD=change-me
+DEFAULT_ADMIN_FULL_NAME=AuditIA Admin
 
-`AIService` usa LangChain/OpenAI para:
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_TEMPERATURE=0.1
+CHROMA_COLLECTION=auditia_documents
+```
 
-- Extraer items desde texto de facturas.
-- Detectar anomalias.
-- Devolver JSON estructurado para auditoria.
+No guardes claves reales en Git. Si una API key fue expuesta, rotala desde el proveedor y usa la nueva solo como variable de entorno.
 
-### File Parser
+## Deploy En Render
 
-`FileParser` extrae texto desde:
+El proyecto fija Python 3.13.4 con:
 
-- PDF
-- JSON
-- CSV
-- Texto plano como fallback
+```text
+.python-version
+runtime.txt
+```
+
+Render debe usar Python 3.13.4. No uses Python 3.14 por ahora, porque `pydantic-core==2.27.2` puede intentar compilarse desde Rust durante el build.
+
+Configuracion recomendada en Render:
+
+```bash
+Build Command: pip install -r requirements.txt
+Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Si Render insiste en Python 3.14, agrega:
+
+```env
+PYTHON_VERSION=3.13.4
+```
+
+Backend desplegado:
+
+```text
+https://demo-hackaithon-backend.onrender.com
+```
+
+## Integracion Con Frontend
+
+El frontend React/Vite debe usar:
+
+```env
+VITE_API_BASE_URL=https://demo-hackaithon-backend.onrender.com/api
+```
+
+Para desarrollo local:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+La URL base debe incluir `/api`. El healthcheck no lleva `/api`:
+
+```text
+GET /health
+```
+
+El frontend no debe guardar credenciales de MongoDB, OpenAI ni secretos JWT. Todo secreto vive en el backend.
+
+## CORS
+
+En Render, `BACKEND_CORS_ORIGINS` debe incluir el dominio real del frontend:
+
+```env
+BACKEND_CORS_ORIGINS=https://demo-hack-a-ithon-frontend.vercel.app,http://localhost:5173
+```
+
+Si el dominio de Vercel cambia, tambien debe actualizarse esta variable.
+
+## Autenticacion
+
+Endpoints:
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+GET /api/auth/me
+```
+
+Login:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "password"
+}
+```
+
+Respuesta:
+
+```json
+{
+  "accessToken": "...",
+  "tokenType": "bearer",
+  "user": {
+    "id": "...",
+    "email": "admin@example.com",
+    "fullName": "AuditIA Admin",
+    "role": "ADMIN",
+    "isActive": true
+  }
+}
+```
+
+Cuando `AUTH_REQUIRED=true`, el frontend debe enviar:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+En modo demo o desarrollo puede usarse:
+
+```env
+AUTH_REQUIRED=false
+```
 
 ## Endpoints
 
-### Health
+Health:
 
-- `GET /health`
+```text
+GET /health
+```
 
-### Autenticacion
+Casos:
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
+```text
+GET /api/cases
+POST /api/cases
+GET /api/cases/{caseId}
+PATCH /api/cases/{caseId}/status
+GET /api/cases/{caseId}/documents
+POST /api/cases/{caseId}/documents
+```
 
-### Casos
+Auditorias:
 
-- `GET /api/cases`
-- `POST /api/cases`
-- `GET /api/cases/{case_id}`
-- `PATCH /api/cases/{case_id}/status`
-- `GET /api/cases/{case_id}/documents`
-- `POST /api/cases/{case_id}/documents`
+```text
+POST /api/audit/{caseId}
+GET /api/audit/{caseId}/latest
+GET /api/audit/{caseId}/history
+```
 
-### Auditorias
+Reglas de negocio:
 
-- `POST /api/audit/{case_id}`
-- `GET /api/audit/{case_id}/latest`
-- `GET /api/audit/{case_id}/history`
+```text
+GET /api/business-rules
+POST /api/business-rules
+PUT /api/business-rules/{ruleId}
+PATCH /api/business-rules/{ruleId}/toggle
+DELETE /api/business-rules/{ruleId}
+```
 
-### Reglas De Negocio
+Estadisticas:
 
-- `GET /api/business-rules`
-- `POST /api/business-rules`
-- `PUT /api/business-rules/{rule_id}`
-- `PATCH /api/business-rules/{rule_id}/toggle`
-- `DELETE /api/business-rules/{rule_id}`
+```text
+GET /api/statistics/dashboard
+GET /api/statistics/denial-reasons
+```
 
-### Estadisticas
+## Contrato Para Frontend
 
-- `GET /api/statistics/dashboard`
-- `GET /api/statistics/denial-reasons`
+La API responde en `camelCase`, aunque internamente Python use `snake_case`.
 
-## Contratos Esperados Por El Frontend
+Ejemplo para crear caso:
 
-Las respuestas usan aliases `camelCase` para coincidir con React:
+```json
+{
+  "claimNumber": "SIN-2026-001",
+  "workshop": "Taller Central",
+  "vehicle": {
+    "brand": "Toyota",
+    "model": "Corolla",
+    "year": 2020
+  },
+  "plate": "ABC-1234",
+  "reportedDamages": ["parachoques", "guardafango"],
+  "invoiceTotal": 1200,
+  "tariffTotal": 1100,
+  "status": "NUEVO"
+}
+```
 
-- `claimNumber`
-- `reportedDamages`
-- `invoiceTotal`
-- `tariffTotal`
-- `receivedAt`
-- `createdAt`
-- `documentType`
-- `mimeType`
-- `auditId`
-- `caseId`
-- `latestAudits`
-- `approvalRate`
-- `targetField`
-- `referenceValue`
-- `alertMessage`
+Respuesta de listado:
 
-## Estados Y Enums
+```json
+{
+  "cases": []
+}
+```
 
-Estados de caso:
+Respuesta de dashboard sin datos:
 
-- `NUEVO`
-- `PENDIENTE_DOCUMENTOS`
-- `LISTO_PARA_AUDITORIA`
-- `EN_AUDITORIA`
-- `OBSERVADO`
-- `APROBADO`
-- `DENEGADO`
-- `REVISION_HUMANA`
+```json
+{
+  "totalCases": 0,
+  "approvedCases": 0,
+  "observedCases": 0,
+  "deniedCases": 0,
+  "humanReviewCases": 0,
+  "approvalRate": 0,
+  "latestAudits": []
+}
+```
 
-Tipos de documento:
-
-- `FACTURA`
-- `ORDEN_REPARACION`
-- `DETALLE_MANO_OBRA`
-- `FOTOS_DANIO`
-
-Tipos de regla:
-
-- `PRECIO_MAXIMO`
-- `ITEM_DUPLICADO`
-- `ITEM_NO_RELACIONADO`
-- `CANTIDAD_MAXIMA`
-- `DOCUMENTO_OBLIGATORIO`
-- `PORCENTAJE_VARIACION`
+El frontend debe tratar listas vacias y contadores en cero como estados validos, no como errores de conexion.
 
 ## Carga De Documentos
 
 Endpoint:
 
 ```http
-POST /api/cases/{case_id}/documents
-```
-
-Tipo:
-
-```text
-multipart/form-data
+POST /api/cases/{caseId}/documents
+Content-Type: multipart/form-data
 ```
 
 Campos:
 
-- `files`: uno o varios archivos.
-- `documents`: JSON serializado con metadata.
+```text
+files: uno o varios archivos
+documents: JSON serializado con metadata de cada archivo
+```
 
 Ejemplo de `documents`:
 
@@ -405,176 +367,171 @@ Ejemplo de `documents`:
 ]
 ```
 
-Formatos permitidos:
+La cantidad de items en `documents` debe coincidir con la cantidad de archivos enviados en `files`.
 
-- PDF
-- CSV
-- XLSX
-- JSON
-- PNG
-- JPG
-- JPEG
+## Estados Y Enums
 
-Tamano maximo total por caso/auditoria:
+Estados de caso:
 
-```bash
-UPLOAD_MAX_TOTAL_BYTES=20971520
+```text
+NUEVO
+PENDIENTE_DOCUMENTOS
+LISTO_PARA_AUDITORIA
+EN_AUDITORIA
+OBSERVADO
+APROBADO
+DENEGADO
+REVISION_HUMANA
 ```
 
-## Reglas De Auditoria Implementadas
+Tipos de documento:
 
-La primera version del motor:
+```text
+FACTURA
+ORDEN_REPARACION
+DETALLE_MANO_OBRA
+FOTOS_DANIO
+```
 
-- Exige documentos obligatorios antes de auditar.
-- Carga reglas `ACTIVA`.
-- Evalua reglas de tipo `DOCUMENTO_OBLIGATORIO`.
-- Genera discrepancias.
-- Actualiza estado del caso.
-- Guarda historial de auditoria.
-- Calcula confianza basica.
+Roles:
 
-Si no existen datos, la API devuelve ceros, listas vacias o `null`. No se generan datos falsos.
+```text
+ADMIN
+AUDITOR
+WORKSHOP
+```
 
-## Verificacion De Importaciones
+Tipos de regla:
 
-Para revisar importaciones de todos los archivos:
+```text
+PRECIO_MAXIMO
+ITEM_DUPLICADO
+ITEM_NO_RELACIONADO
+CANTIDAD_MAXIMA
+DOCUMENTO_OBLIGATORIO
+PORCENTAJE_VARIACION
+```
+
+Operadores:
+
+```text
+MAYOR_QUE
+MENOR_QUE
+IGUAL_A
+DIFERENTE_DE
+CONTIENE
+NO_CONTIENE
+```
+
+Severidades:
+
+```text
+BAJA
+MEDIA
+ALTA
+CRITICA
+```
+
+## Manejo De Errores
+
+Formato esperado:
+
+```json
+{
+  "detail": "Mensaje del error."
+}
+```
+
+Codigos comunes:
+
+```text
+401: no autenticado o token invalido
+403: sin permisos
+404: recurso no encontrado
+422: payload invalido
+500: error interno
+```
+
+## Verificacion
+
+Compilar imports:
 
 ```bash
-.venv\Scripts\activate
 python -m compileall app test_openai.py
 ```
 
-Para importar modulo por modulo:
-
-```powershell
-@'
-import importlib
-from pathlib import Path
-
-failures = []
-for path in sorted(Path(".").rglob("*.py")):
-    if any(part in {".venv", "__pycache__"} for part in path.parts):
-        continue
-    module = ".".join(path.with_suffix("").parts)
-    try:
-        importlib.import_module(module)
-        print(f"OK {module}")
-    except Exception as exc:
-        failures.append((module, type(exc).__name__, str(exc)))
-        print(f"FAIL {module}: {type(exc).__name__}: {exc}")
-
-print("failures=", len(failures))
-for failure in failures:
-    print(failure)
-'@ | .venv\Scripts\python -
-```
-
-Si aparece `StrEnum`, revisa que estes usando Python 3.11+.
-
-## Verificacion De OpenAI
-
-El archivo `test_openai.py` verifica que la configuracion exista:
+Revisar dependencias:
 
 ```bash
-.venv\Scripts\python test_openai.py
+python -m pip check
 ```
 
-Este script no debe imprimir la API key completa. Solo confirma si existe, el modelo y la temperatura.
-
-## Verificacion De Dependencias
+Probar OpenAI:
 
 ```bash
-.venv\Scripts\python -m pip check
+python test_openai.py
 ```
 
-Si `app/shared/ai_service.py` falla al importar, confirma que esten instaladas:
+Probar API desplegada:
 
 ```bash
-langchain
-langchain-community
-langchain-openai
-openai
+curl https://demo-hackaithon-backend.onrender.com/health
+curl https://demo-hackaithon-backend.onrender.com/api/cases
+curl https://demo-hackaithon-backend.onrender.com/api/statistics/dashboard
+curl https://demo-hackaithon-backend.onrender.com/api/business-rules
 ```
-
-Todas estan declaradas en `requirements.txt`.
-
-## MongoDB
-
-La conexion se inicializa en startup mediante:
-
-```text
-app/database/mongo.py
-```
-
-Modelos registrados en Beanie:
-
-- `User`
-- `Case`
-- `CaseDocument`
-- `Audit`
-- `BusinessRule`
-
-Tambien se crea un admin por defecto si no existe, usando:
-
-```bash
-DEFAULT_ADMIN_EMAIL
-DEFAULT_ADMIN_PASSWORD
-DEFAULT_ADMIN_FULL_NAME
-```
-
-## Seguridad
-
-- No versionar `.env`.
-- Rotar claves expuestas.
-- Cambiar `JWT_SECRET_KEY` en produccion.
-- Activar `AUTH_REQUIRED=true` en produccion.
-- Mantener `OPENAI_API_KEY` solo en entorno local o gestor de secretos.
 
 ## Problemas Comunes
 
 ### `ImportError: cannot import name 'StrEnum'`
 
-Estas usando Python 3.10 o menor. Usa Python 3.11+ o adapta enums a `str, Enum`.
+Estas usando Python 3.10 o menor. Usa Python 3.11+; recomendado Python 3.13.4.
 
-### `ModuleNotFoundError: langchain_openai`
+### Render usa Python 3.14
 
-Ejecuta:
+Verifica `.python-version`, `runtime.txt` y la variable:
 
-```bash
-python -m pip install -r requirements.txt
+```env
+PYTHON_VERSION=3.13.4
 ```
 
-### Error de Passlib con bcrypt 5
+Luego ejecuta un deploy con cache limpia.
 
-Si aparece:
+### Error de `pydantic-core` con Rust o maturin
+
+Ocurre porque Render intenta instalar con Python 3.14 y no encuentra wheel compatible para la version fijada. La solucion es usar Python 3.13.4.
+
+### Error de Passlib con bcrypt
+
+`passlib==1.7.4` debe usarse con:
 
 ```text
-error reading bcrypt version
-ValueError: password cannot be longer than 72 bytes
+bcrypt==4.0.1
 ```
-
-Instala la version compatible:
-
-```bash
-python -m pip install bcrypt==4.0.1
-```
-
-`passlib==1.7.4` no es compatible con `bcrypt==5.0.0`. Por eso `requirements.txt` fija `bcrypt==4.0.1`.
-
-### MongoDB no conecta
-
-Verifica:
-
-- MongoDB esta levantado.
-- `MONGODB_URI` es correcto.
-- `MONGODB_DB` existe o puede crearse.
 
 ### El frontend no conecta
 
-Verifica:
+Revisar:
 
-- Backend en `http://localhost:8000`.
-- Frontend con `VITE_API_BASE_URL=http://localhost:8000/api`.
-- CORS incluye `http://localhost:5173`.
+- `VITE_API_BASE_URL=https://demo-hackaithon-backend.onrender.com/api`
+- redeploy del frontend despues de cambiar variables
+- `BACKEND_CORS_ORIGINS` en Render
+- pestana Network del navegador para ver la URL exacta llamada por React
 
-hola
+### MongoDB no conecta
+
+Revisar:
+
+- `MONGODB_URI`
+- usuario y password de MongoDB Atlas
+- whitelist de IPs en Atlas
+- nombre de base de datos en `MONGODB_DB`
+
+## Seguridad
+
+- No versionar `.env`.
+- No poner API keys en React.
+- Rotar claves expuestas.
+- Cambiar `JWT_SECRET_KEY` en produccion.
+- Activar `AUTH_REQUIRED=true` cuando el flujo de login ya este conectado.
+- Mantener `OPENAI_API_KEY` solo en Render o entorno local.
