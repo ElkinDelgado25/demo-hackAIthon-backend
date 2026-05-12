@@ -4,7 +4,7 @@ from app.audits.models import Audit
 from app.audits.schemas import AuditBatchRequest, AuditRead, AuditRunRequest
 from app.business_rules.models import BusinessRule
 from app.cases.models import Case, CaseDocument
-from app.cases.service import resolve_case
+from app.cases.service import infer_document_type, resolve_case
 from app.core.exceptions import AppError, NotFoundError
 from app.shared.ai_service import AIService
 from app.shared.enums import CaseStatus, DocumentType, RuleStatus, RuleType
@@ -85,13 +85,16 @@ async def _execute_audit(case: Case, payload: AuditRunRequest, current_user: Use
     active_rules = await BusinessRule.find(BusinessRule.status == RuleStatus.ACTIVA).to_list()
     context = _build_audit_context(case, documents, active_rules, payload, is_final)
 
-    discrepancies = _evaluate_documents(case, documents)
-    discrepancies.extend(_evaluate_business_rules(active_rules, documents))
+    effective_documents = _effective_documents(documents)
+    discrepancies = _evaluate_documents(case, effective_documents)
+    missing_types = {item.get("document_type") for item in discrepancies if item.get("type") == "DOCUMENTO_FALTANTE"}
+    discrepancies.extend(_evaluate_business_rules(active_rules, effective_documents, missing_types))
     discrepancies.extend(_evaluate_financials(case))
-    discrepancies.extend(_evaluate_text_consistency(case, documents))
+    discrepancies.extend(_evaluate_text_consistency(case, effective_documents))
 
     ai_result = await AIService().audit_case(context)
     discrepancies.extend(_normalize_ai_discrepancies(ai_result.get("discrepancies", [])))
+    discrepancies = _dedupe_discrepancies(discrepancies)
 
     findings = _findings_from_discrepancies(discrepancies)
     top_reasons = _top_reasons(discrepancies)
@@ -116,7 +119,7 @@ async def _execute_audit(case: Case, payload: AuditRunRequest, current_user: Use
         discrepancies=discrepancies,
         top_reasons=top_reasons,
         recommendation=recommendation,
-        documents=[_document_snapshot(item) for item in documents],
+        documents=[_document_snapshot(item) for item in effective_documents],
         final_verdict=final_verdict,
         is_final=is_final,
         executed_by=current_user.id if current_user else None,
@@ -150,7 +153,19 @@ def _build_audit_context(
             "tariffTotal": case.tariff_total,
         },
         "documents": [_document_snapshot(document, include_text=True) for document in documents],
-        "businessRules": [rule.name for rule in rules],
+        "businessRules": [
+            {
+                "name": rule.name,
+                "description": rule.description,
+                "type": rule.type.value,
+                "targetField": rule.target_field,
+                "operator": rule.operator.value,
+                "referenceValue": rule.reference_value,
+                "severity": rule.severity.value,
+                "alertMessage": rule.alert_message,
+            }
+            for rule in rules
+        ],
         "payload": payload.model_dump(mode="json"),
         "isFinalVerdict": is_final,
     }
@@ -191,13 +206,15 @@ def _evaluate_documents(case: Case, documents: list[CaseDocument]) -> list[dict]
     return discrepancies
 
 
-def _evaluate_business_rules(rules: list[BusinessRule], documents: list[CaseDocument]) -> list[dict]:
+def _evaluate_business_rules(rules: list[BusinessRule], documents: list[CaseDocument], known_missing_types: set[str | None]) -> list[dict]:
     discrepancies = []
     document_types = {item.document_type.value for item in documents}
 
     for rule in rules:
         if rule.type == RuleType.DOCUMENTO_OBLIGATORIO and rule.reference_value:
             required_type = rule.reference_value.strip().upper()
+            if required_type in known_missing_types:
+                continue
             if required_type and required_type not in document_types:
                 discrepancies.append(_discrepancy(
                     type_=rule.type.value,
@@ -221,7 +238,15 @@ def _evaluate_financials(case: Case) -> list[dict]:
     if difference <= 0:
         return []
 
-    severity = "CRITICA" if difference > case.tariff_total * 0.25 else "ALTA"
+    ratio = difference / case.tariff_total if case.tariff_total else 1
+    if ratio <= 0.1:
+        severity = "BAJA"
+    elif ratio <= 0.25:
+        severity = "MEDIA"
+    elif ratio <= 0.4:
+        severity = "ALTA"
+    else:
+        severity = "CRITICA"
     return [_discrepancy(
         type_="DIFERENCIA_FINANCIERA",
         message="La factura supera el valor esperado por tarifario.",
@@ -265,18 +290,29 @@ def _normalize_ai_discrepancies(items: list) -> list[dict]:
     for item in items:
         if not isinstance(item, dict):
             continue
+        message = item.get("message") or item.get("descripcion") or item.get("description")
+        type_ = item.get("type") or item.get("tipo")
+        if not _has_meaningful_text(message) or not _has_meaningful_text(type_):
+            continue
         normalized.append(_discrepancy(
-            type_=item.get("type") or item.get("tipo") or "IA",
-            message=item.get("message") or item.get("descripcion") or "Dato no disponible",
+            type_=str(type_).upper(),
+            message=str(message),
             severity=item.get("severity") or item.get("severidad") or "MEDIA",
+            expected=item.get("expected") or item.get("valor_esperado"),
+            found=item.get("found") or item.get("valor_encontrado"),
         ))
     return normalized
 
 
 def _status_from_score_and_discrepancies(risk_score: int, discrepancies: list[dict]) -> CaseStatus:
-    if any(item.get("severity") == "CRITICA" for item in discrepancies) or risk_score >= 85:
+    critical_financial_or_coverage = any(
+        item.get("severity") == "CRITICA"
+        and item.get("type") in {"DIFERENCIA_FINANCIERA", "FUERA_DE_COBERTURA", "PRECIO_MAXIMO"}
+        for item in discrepancies
+    )
+    if critical_financial_or_coverage:
         return CaseStatus.DENEGADO
-    if risk_score >= 65:
+    if risk_score >= 70:
         return CaseStatus.REVISION_HUMANA
     if discrepancies:
         return CaseStatus.OBSERVADO
@@ -284,7 +320,7 @@ def _status_from_score_and_discrepancies(risk_score: int, discrepancies: list[di
 
 
 def _risk_score(discrepancies: list[dict]) -> int:
-    weights = {"BAJA": 8, "MEDIA": 15, "ALTA": 25, "CRITICA": 45}
+    weights = {"BAJA": 5, "MEDIA": 10, "ALTA": 18, "CRITICA": 35}
     return min(100, sum(weights.get(item.get("severity", "MEDIA"), 15) for item in discrepancies))
 
 
@@ -305,6 +341,8 @@ def _top_reasons(discrepancies: list[dict]) -> list[str]:
     reasons = []
     for item in discrepancies:
         reason = item.get("message") or item.get("type") or "Dato no disponible"
+        if not _has_meaningful_text(reason):
+            continue
         if reason not in reasons:
             reasons.append(reason)
     return reasons[:5]
@@ -361,3 +399,33 @@ def _discrepancy(type_: str, message: str, severity: str, **extra) -> dict:
         "severity": severity,
         **extra,
     }
+
+
+def _effective_documents(documents: list[CaseDocument]) -> list[CaseDocument]:
+    for document in documents:
+        document.document_type = infer_document_type(document.original_name or document.name, document.document_type)
+    return documents
+
+
+def _dedupe_discrepancies(discrepancies: list[dict]) -> list[dict]:
+    seen = set()
+    result = []
+    for item in discrepancies:
+        key = (
+            item.get("type"),
+            item.get("message"),
+            item.get("document_type"),
+            item.get("rule_id"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+    return result
+
+
+def _has_meaningful_text(value: object) -> bool:
+    if value is None:
+        return False
+    text = str(value).strip()
+    return bool(text) and text.lower() not in {"dato no disponible", "n/a", "na", "none", "null", "-"}

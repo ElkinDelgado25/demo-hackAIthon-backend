@@ -61,7 +61,14 @@ Siempre devolver:
 * severidad
 * recommendation
 * discrepancies
-* documentos faltantes"""
+* documentos faltantes
+
+Criterio de decision:
+
+* No debes denegar automaticamente por documentos faltantes o diferencias financieras pequenas.
+* Si faltan documentos, normalmente el status sugerido debe ser OBSERVADO o REVISION_HUMANA.
+* Solo sugiere DENEGADO cuando exista una discrepancia critica de cobertura, fraude, duplicidad grave o diferencia financiera material.
+* Usa las reglas de negocio entregadas por el sistema como fuente principal de validacion."""
 
 
 class AIService:
@@ -121,6 +128,12 @@ class AIService:
           "topReasons": [],
           "recommendation": "texto breve"
         }}
+
+        Reglas de salida:
+        - No devuelvas findings ni discrepancies vacios.
+        - No uses "Dato no disponible" como type, message, reason o title.
+        - Si no puedes sustentar una discrepancia con los documentos, no la incluyas.
+        - Cada discrepancy debe tener type, message y severity.
         """
 
         try:

@@ -43,11 +43,12 @@ def case_to_read(case: Case) -> CaseRead:
 
 
 def document_to_read(document: CaseDocument) -> DocumentRead:
+    document_type = infer_document_type(document.original_name or document.name, document.document_type)
     return DocumentRead(
         id=public_id(document.id),
         case_id=document.case_claim_number,
-        document_type=document.document_type,
-        type=document.document_type,
+        document_type=document_type,
+        type=document_type,
         name=document.original_name or document.name,
         original_name=document.original_name or document.name,
         size=document.size,
@@ -156,7 +157,7 @@ async def upload_documents(case_id: str, files: list[UploadFile], documents_json
         document = CaseDocument(
             case_id=case.id,
             case_claim_number=case.claim_number,
-            document_type=item.type,
+            document_type=infer_document_type(original_name, item.type),
             name=safe_name,
             original_name=original_name,
             size=item.size,
@@ -208,3 +209,22 @@ def _ensure_storage_path(path: Path) -> None:
     storage_root = settings.upload_local_dir.resolve()
     if storage_root not in path.parents:
         raise AppError("Ruta de almacenamiento invalida.")
+
+
+def infer_document_type(filename: str, fallback: DocumentType) -> DocumentType:
+    normalized = filename.lower().replace("-", "_").replace(" ", "_")
+    if "tarifario" in normalized:
+        return DocumentType.TARIFARIO
+    if "poliza" in normalized or "póliza" in normalized:
+        return DocumentType.POLIZA
+    if "sustento" in normalized or "adicional" in normalized:
+        return DocumentType.SUSTENTO_ADICIONAL
+    if "orden" in normalized or "reparacion" in normalized or "reparación" in normalized:
+        return DocumentType.ORDEN_REPARACION
+    if "mano" in normalized or "obra" in normalized:
+        return DocumentType.DETALLE_MANO_OBRA
+    if "foto" in normalized or "danio" in normalized or "daño" in normalized or "dano" in normalized:
+        return DocumentType.FOTOS_DANIO
+    if "factura" in normalized:
+        return DocumentType.FACTURA
+    return fallback
