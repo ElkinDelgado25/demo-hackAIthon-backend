@@ -110,6 +110,11 @@ async def list_documents(case_id: str) -> list[DocumentRead]:
     return [document_to_read(item) for item in documents]
 
 
+async def list_all_documents() -> list[DocumentRead]:
+    documents = await CaseDocument.find_all().sort("-uploaded_at").to_list()
+    return [document_to_read(item) for item in documents]
+
+
 async def upload_documents(case_id: str, files: list[UploadFile], documents_json: str, current_user: User | None) -> list[DocumentRead]:
     case = await resolve_case(case_id)
     metadata = _parse_metadata(documents_json)

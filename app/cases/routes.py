@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.cases.schemas import CaseCreate, CaseListResponse, CaseRead, CaseStatusUpdate, DocumentsResponse
-from app.cases.service import create_case, get_case, list_cases, list_documents, update_case_status, upload_documents
+from app.cases.service import create_case, get_case, list_all_documents, list_cases, list_documents, update_case_status, upload_documents
 from app.core.dependencies import CurrentUser, get_current_user
 
 router = APIRouter(prefix="/cases", tags=["cases"], dependencies=[Depends(get_current_user)])
@@ -17,6 +17,11 @@ async def get_cases() -> CaseListResponse:
 @router.post("", response_model=CaseRead, status_code=201)
 async def post_case(payload: CaseCreate) -> CaseRead:
     return await create_case(payload)
+
+
+@router.get("/documents", response_model=DocumentsResponse)
+async def get_all_case_documents() -> DocumentsResponse:
+    return DocumentsResponse(case_id=None, documents=await list_all_documents())
 
 
 @router.get("/{case_id}", response_model=CaseRead)

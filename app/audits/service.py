@@ -80,6 +80,11 @@ async def get_audit_history(case_id: str) -> list[AuditRead]:
     return [audit_to_read(item) for item in audits]
 
 
+async def get_all_audit_history() -> list[AuditRead]:
+    audits = await Audit.find_all().sort("-created_at").to_list()
+    return [audit_to_read(item) for item in audits]
+
+
 async def _execute_audit(case: Case, payload: AuditRunRequest, current_user: User | None, is_final: bool) -> Audit:
     documents = await CaseDocument.find(CaseDocument.case_id == case.id).sort("-uploaded_at").to_list()
     active_rules = await BusinessRule.find(BusinessRule.status == RuleStatus.ACTIVA).to_list()
