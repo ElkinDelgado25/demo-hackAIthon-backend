@@ -21,7 +21,7 @@ class Audit(Document):
     difference: float | None = None
     findings: list[dict[str, Any]] = Field(default_factory=list)
     discrepancies: list[dict[str, Any]] = Field(default_factory=list)
-    top_reasons: list[str] = Field(default_factory=list)
+    top_reasons: list[dict[str, Any]] = Field(default_factory=list)
     recommendation: str | None = None
     documents: list[dict[str, Any]] = Field(default_factory=list)
     final_verdict: str | None = None
@@ -42,6 +42,19 @@ class Audit(Document):
         if isinstance(value, str):
             return legacy_map.get(value.lower(), value)
         return value
+
+    @field_validator("top_reasons", mode="before")
+    @classmethod
+    def normalize_top_reasons(cls, value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        normalized = []
+        for item in value:
+            if isinstance(item, dict):
+                normalized.append(item)
+            elif item:
+                normalized.append({"type": "HALLAZGO", "message": str(item), "severity": "MEDIA"})
+        return normalized
 
     class Settings:
         name = "audits"

@@ -32,7 +32,7 @@ def audit_to_read(audit: Audit) -> AuditRead:
         difference=audit.difference,
         findings=audit.findings,
         discrepancies=audit.discrepancies,
-        top_reasons=audit.top_reasons,
+        top_reasons=_normalize_top_reasons_for_read(audit.top_reasons),
         recommendation=audit.recommendation,
         documents=audit.documents,
         final_verdict=audit.final_verdict,
@@ -337,14 +337,20 @@ def _findings_from_discrepancies(discrepancies: list[dict]) -> list[dict]:
     ]
 
 
-def _top_reasons(discrepancies: list[dict]) -> list[str]:
+def _top_reasons(discrepancies: list[dict]) -> list[dict]:
     reasons = []
     for item in discrepancies:
         reason = item.get("message") or item.get("type") or "Dato no disponible"
         if not _has_meaningful_text(reason):
             continue
-        if reason not in reasons:
-            reasons.append(reason)
+        reason_item = {
+            "type": item.get("type", "HALLAZGO"),
+            "message": reason,
+            "severity": item.get("severity", "MEDIA"),
+        }
+        reason_key = (reason_item["type"], reason_item["message"], reason_item["severity"])
+        if reason_key not in {(entry["type"], entry["message"], entry["severity"]) for entry in reasons}:
+            reasons.append(reason_item)
     return reasons[:5]
 
 
@@ -429,3 +435,23 @@ def _has_meaningful_text(value: object) -> bool:
         return False
     text = str(value).strip()
     return bool(text) and text.lower() not in {"dato no disponible", "n/a", "na", "none", "null", "-"}
+
+
+def _normalize_top_reasons_for_read(items: list) -> list[dict]:
+    normalized = []
+    for item in items or []:
+        if isinstance(item, dict):
+            message = item.get("message") or item.get("reason") or item.get("type")
+            if _has_meaningful_text(message):
+                normalized.append({
+                    "type": item.get("type", "HALLAZGO"),
+                    "message": message,
+                    "severity": item.get("severity", "MEDIA"),
+                })
+        elif _has_meaningful_text(item):
+            normalized.append({
+                "type": "HALLAZGO",
+                "message": str(item),
+                "severity": "MEDIA",
+            })
+    return normalized[:5]

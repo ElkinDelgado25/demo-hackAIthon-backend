@@ -32,7 +32,7 @@ class AuditRead(ApiModel):
     difference: float | None = None
     findings: list[dict[str, Any]] = Field(default_factory=list)
     discrepancies: list[dict[str, Any]] = Field(default_factory=list)
-    top_reasons: list[str] = Field(default_factory=list)
+    top_reasons: list[dict[str, Any]] = Field(default_factory=list)
     recommendation: str | None = None
     documents: list[dict[str, Any]] = Field(default_factory=list)
     final_verdict: str | None = None
