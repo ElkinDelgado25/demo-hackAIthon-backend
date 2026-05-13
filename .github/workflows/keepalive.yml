@@ -2,7 +2,7 @@ name: Keep Render Backend Awake
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -13,5 +13,5 @@ jobs:
       - name: Ping backend
         run: |
           echo "Pinging Render backend..."
-          curl -fsS https://demo-hackaithon-backend.onrender.com/ || true
+          curl -L --max-time 60 -sS https://demo-hackaithon-backend.onrender.com/ || true
           echo "Done"
