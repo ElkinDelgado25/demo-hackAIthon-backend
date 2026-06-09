@@ -333,8 +333,8 @@ def _findings_from_discrepancies(discrepancies: list[dict]) -> list[dict]:
     return [
         {
             "id": f"FND-{index + 1}",
-            "title": item.get("type", "Dato no disponible"),
-            "detail": item.get("message", "Dato no disponible"),
+            "title": item.get("type", "Unknown data"),
+            "detail": item.get("message", "Data not available"),
             "severity": item.get("severity", "MEDIA"),
             "impact": item.get("difference"),
         }
@@ -345,7 +345,7 @@ def _findings_from_discrepancies(discrepancies: list[dict]) -> list[dict]:
 def _top_reasons(discrepancies: list[dict]) -> list[dict]:
     reasons = []
     for item in discrepancies:
-        reason = item.get("message") or item.get("type") or "Dato no disponible"
+        reason = item.get("message") or item.get("type") or "data not found "
         if not _has_meaningful_text(reason):
             continue
         reason_item = {
@@ -399,7 +399,7 @@ def _document_snapshot(document: CaseDocument, include_text: bool = False) -> di
         "uploadedAt": document.uploaded_at.isoformat(),
     }
     if include_text:
-        snapshot["extractedText"] = document.extracted_text[:3000] if document.extracted_text else "Dato no disponible"
+        snapshot["extractedText"] = document.extracted_text[:3000] if document.extracted_text else "Executed OCR pending or error"
     return snapshot
 
 
@@ -445,6 +445,8 @@ def _has_meaningful_text(value: object) -> bool:
 def _normalize_top_reasons_for_read(items: list) -> list[dict]:
     normalized = []
     for item in items or []:
+        if len(normalized) == 5:
+            break
         if isinstance(item, dict):
             message = item.get("message") or item.get("reason") or item.get("type")
             if _has_meaningful_text(message):
@@ -459,4 +461,4 @@ def _normalize_top_reasons_for_read(items: list) -> list[dict]:
                 "message": str(item),
                 "severity": "MEDIA",
             })
-    return normalized[:5]
+    return normalized
