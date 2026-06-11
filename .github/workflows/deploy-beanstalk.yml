@@ -1,0 +1,86 @@
+name: Deploy Elastic Beanstalk
+
+on:
+  workflow_run:
+    workflows:
+      - SonarCloud
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      }}
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EB_APPLICATION_NAME: ${{ vars.EB_APPLICATION_NAME }}
+      EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
+      EB_S3_BUCKET: ${{ vars.EB_S3_BUCKET }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          test -n "$AWS_REGION" || { echo "::error::Missing repository variable AWS_REGION"; exit 1; }
+          test -n "$EB_APPLICATION_NAME" || { echo "::error::Missing repository variable EB_APPLICATION_NAME"; exit 1; }
+          test -n "$EB_ENVIRONMENT_NAME" || { echo "::error::Missing repository variable EB_ENVIRONMENT_NAME"; exit 1; }
+          test -n "$EB_S3_BUCKET" || { echo "::error::Missing repository variable EB_S3_BUCKET"; exit 1; }
+          test -f Procfile || { echo "::error::Missing Procfile"; exit 1; }
+          test -f requirements.txt || { echo "::error::Missing requirements.txt"; exit 1; }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build source bundle
+        shell: bash
+        run: |
+          SHORT_SHA="${DEPLOY_SHA:0:7}"
+          VERSION_LABEL="backend-${SHORT_SHA}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          S3_KEY="elasticbeanstalk/${EB_APPLICATION_NAME}/${VERSION_LABEL}.zip"
+
+          git archive --format=zip --output app.zip HEAD
+
+          echo "VERSION_LABEL=${VERSION_LABEL}" >> "$GITHUB_ENV"
+          echo "S3_KEY=${S3_KEY}" >> "$GITHUB_ENV"
+
+      - name: Upload source bundle to S3
+        run: aws s3 cp app.zip "s3://${EB_S3_BUCKET}/${S3_KEY}"
+
+      - name: Create Elastic Beanstalk application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --version-label "${VERSION_LABEL}" \
+            --source-bundle S3Bucket="${EB_S3_BUCKET}",S3Key="${S3_KEY}"
+
+      - name: Deploy application version
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${EB_ENVIRONMENT_NAME}" \
+            --version-label "${VERSION_LABEL}"
+
+      - name: Wait for deployment
+        run: aws elasticbeanstalk wait environment-updated --environment-name "${EB_ENVIRONMENT_NAME}"

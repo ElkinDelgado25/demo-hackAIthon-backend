@@ -168,6 +168,73 @@ Backend desplegado:
 https://demo-hackaithon-backend.onrender.com
 ```
 
+## Deploy En Elastic Beanstalk
+
+Seleccion recomendada al crear la aplicacion:
+
+```text
+Platform: Python
+Platform branch: Python 3.13 running on 64bit Amazon Linux 2023
+Platform version: Recommended
+```
+
+La version `4.x.x` que muestra Elastic Beanstalk es la version de la plataforma de AWS, no la version exacta de Python. El proyecto se analiza y desarrolla como Python 3.13.
+
+El repositorio incluye:
+
+- `Procfile`: arranca FastAPI con Gunicorn + Uvicorn worker en el puerto `8000`.
+- `.ebignore`: evita subir `.venv`, caches, archivos locales, Sonar y carpetas que no son necesarias en produccion.
+- `requirements.txt`: incluye `gunicorn` para el servidor de produccion.
+
+Configuracion recomendada en Elastic Beanstalk:
+
+```text
+Health check path: /health
+Environment type: Single instance para pruebas, Load balanced para produccion
+```
+
+Variables de entorno que debes configurar en Beanstalk, no en Git:
+
+```env
+ENVIRONMENT=production
+API_PREFIX=/api
+BACKEND_CORS_ORIGINS=https://tu-frontend.vercel.app,http://localhost:5173
+MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net
+MONGODB_DB=auditoria_siniestros
+JWT_SECRET_KEY=usa-un-secreto-largo
+AUTH_REQUIRED=false
+OPENAI_API_KEY=tu_api_key_si_usas_ia
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_TEMPERATURE=0.1
+UPLOAD_LOCAL_DIR=storage/uploads
+```
+
+Si subes un `.zip` desde la consola de AWS, comprime los archivos desde la raiz del repo. El zip debe contener directamente `app/`, `requirements.txt` y `Procfile`, no una carpeta contenedora.
+
+### Deploy Automatico Con GitHub Actions
+
+Para no subir ZIP local manualmente, crea primero el entorno en Elastic Beanstalk con `Aplicacion de ejemplo`. Eso crea la infraestructura. Luego GitHub Actions reemplaza esa app de ejemplo con el backend real.
+
+El workflow `.github/workflows/deploy-beanstalk.yml` corre automaticamente cuando `SonarCloud` termina correctamente en `main`, y tambien se puede ejecutar manualmente.
+
+Configura estos secrets en GitHub:
+
+```text
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+```
+
+Configura estas variables en GitHub:
+
+```text
+AWS_REGION=us-east-1
+EB_APPLICATION_NAME=nombre-de-tu-aplicacion
+EB_ENVIRONMENT_NAME=nombre-de-tu-entorno
+EB_S3_BUCKET=nombre-del-bucket-para-versiones
+```
+
+El bucket debe existir en la misma region. El workflow crea un ZIP desde Git, lo sube a S3, crea una version de aplicacion y actualiza el environment de Elastic Beanstalk.
+
 ## Integracion Con Frontend
 
 El frontend React/Vite debe usar:
