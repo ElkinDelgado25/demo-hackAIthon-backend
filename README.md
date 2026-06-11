@@ -1,83 +1,70 @@
-# AuditIA Backend
+# SecureMAX Backend
 
-Backend independiente para AuditIA construido con FastAPI, MongoDB y Beanie. Expone una API REST para conectar el frontend React/Vite con datos reales, reemplazando progresivamente mocks, hardcodes y simulaciones.
+Backend API REST desarrollado con el framework **FastAPI** para SecureMAX, un sistema de apoyo para aseguradoras que permite registrar casos de siniestros vehiculares, cargar documentos, aplicar reglas de negocio y ejecutar auditorias asistidas por IA.
 
-## Incluye
+El proyecto expone una API lista para conectarse con un frontend React/Vite y tambien puede probarse directamente desde Swagger.
 
-- FastAPI con Swagger/OpenAPI automatico.
-- MongoDB Atlas o local mediante Motor + Beanie.
-- Autenticacion JWT con `python-jose`.
-- Hash de contrasenas con Passlib + Bcrypt.
-- Configuracion con Pydantic Settings.
-- CORS configurable para Vite, Vercel o dominios propios.
-- Manejo global de errores.
-- Validaciones con Pydantic v2.
-- Modulos separados por dominio.
-- Preparacion para IA con LangChain/OpenAI.
-- Parser basico de archivos para PDF, JSON, CSV y texto plano.
+## Descripcion corta para GitHub
 
-## Stack
+```text
+Backend API REST con FastAPI, MongoDB e IA para auditoria inteligente de siniestros vehiculares.
+```
 
-- Python 3.13.4
-- FastAPI
-- Uvicorn
-- MongoDB
-- Motor
-- Beanie
-- Pydantic v2
-- Pydantic Settings
-- python-jose
-- Passlib + Bcrypt
-- LangChain
-- OpenAI SDK
-- PyPDF2
+## Que Hace SecureMAX
 
-## Estructura
+SecureMAX ayuda a revisar casos de siniestros vehiculares de forma mas ordenada y trazable. El backend centraliza la informacion del caso, los documentos cargados, las reglas de negocio y los resultados de auditoria para detectar posibles inconsistencias antes de aprobar, observar o derivar un caso a revision humana.
+
+El sistema esta pensado para:
+
+- registrar casos de siniestros vehiculares;
+- guardar informacion del vehiculo, taller, danos reportados y valores de factura;
+- cargar documentos como facturas, ordenes de reparacion, fotos, polizas o tarifarios;
+- extraer texto basico desde archivos PDF, CSV, XLSX, JSON y TXT;
+- ejecutar reglas de negocio configurables;
+- generar auditorias con hallazgos, discrepancias, puntaje de riesgo y recomendacion;
+- consultar estadisticas para un dashboard;
+- proteger endpoints con autenticacion JWT cuando el modo seguro este activo.
+
+## Stack Tecnico
+
+| Capa | Tecnologia | Uso |
+|---|---|---|
+| Lenguaje | Python 3.13.4 | Lenguaje principal del backend |
+| Framework | FastAPI | Construccion de API REST, Swagger y validacion |
+| Servidor local | Uvicorn | Ejecucion en desarrollo |
+| Servidor produccion | Gunicorn + Uvicorn Worker | Ejecucion en AWS Elastic Beanstalk |
+| Base de datos | MongoDB / MongoDB Atlas | Persistencia de usuarios, casos, documentos, auditorias y reglas |
+| ODM | Beanie | Modelos documentales sobre MongoDB |
+| Driver MongoDB | Motor | Cliente asincrono para MongoDB |
+| Validacion | Pydantic v2 | Schemas de entrada y salida |
+| Configuracion | Pydantic Settings | Variables de entorno desde `.env` |
+| Autenticacion | python-jose + JWT | Tokens Bearer |
+| Seguridad password | Passlib + bcrypt | Hash de contrasenas |
+| IA | LangChain + OpenAI SDK | Auditoria asistida por LLM |
+| Archivos | python-multipart + PyPDF2 | Carga y lectura basica de documentos |
+
+## Arquitectura Del Proyecto
 
 ```text
 app/
-  main.py
-  core/
-    config.py
-    dependencies.py
-    exceptions.py
-    security.py
-  database/
-    mongo.py
-    init_db.py
-  auth/
-    routes.py
-    schemas.py
-    service.py
-  users/
-    models.py
-    schemas.py
-    service.py
-  cases/
-    models.py
-    routes.py
-    schemas.py
-    service.py
-  audits/
-    models.py
-    routes.py
-    schemas.py
-    service.py
-  business_rules/
-    models.py
-    routes.py
-    schemas.py
-    service.py
-  dashboard/
-    routes.py
-    schemas.py
-    service.py
-  shared/
-    ai_service.py
-    enums.py
-    file_parser.py
-    schemas.py
+  main.py                  # Crea la app FastAPI y registra routers
+  core/                    # Configuracion, seguridad, dependencias y errores
+  database/                # Conexion e inicializacion de MongoDB
+  auth/                    # Registro, login y usuario actual
+  users/                   # Modelos y schemas de usuarios
+  cases/                   # Casos, documentos y estados
+  audits/                  # Ejecucion e historial de auditorias
+  business_rules/          # Reglas de negocio configurables
+  dashboard/               # Estadisticas para panel principal
+  shared/                  # IA, enums, parsers y schemas compartidos
 ```
+
+## Requisitos
+
+- Python 3.13.4
+- MongoDB local o MongoDB Atlas
+- Cuenta/API key de OpenAI si se desea usar auditoria con IA
+- Frontend opcional apuntando a la URL base del backend
 
 ## Instalacion Local
 
@@ -90,7 +77,9 @@ python -m pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Ejecutar:
+Luego ajusta el archivo `.env` con tu conexion a MongoDB y tus variables reales.
+
+Ejecutar el servidor:
 
 ```bash
 python -m uvicorn app.main:app --reload
@@ -98,24 +87,29 @@ python -m uvicorn app.main:app --reload
 
 URLs locales:
 
-- API: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- OpenAPI JSON: `http://localhost:8000/api/openapi.json`
-- Healthcheck: `http://localhost:8000/health`
+| Servicio | URL |
+|---|---|
+| API base | `http://localhost:8000` |
+| API con prefijo | `http://localhost:8000/api` |
+| Swagger | `http://localhost:8000/docs` |
+| ReDoc | `http://localhost:8000/redoc` |
+| OpenAPI JSON | `http://localhost:8000/api/openapi.json` |
+| Healthcheck | `http://localhost:8000/health` |
 
 ## Variables De Entorno
 
-Configura `.env` desde `.env.example`.
+El proyecto usa `.env` para configuracion local. Puedes partir desde `.env.example`.
+
+Ejemplo:
 
 ```env
-APP_NAME=AuditIA API
+APP_NAME=SecureMAX API
 ENVIRONMENT=development
 API_PREFIX=/api
 BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
-MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net
-MONGODB_DB=auditoria_siniestros
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DB=securemax_siniestros
 
 AUTH_REQUIRED=false
 JWT_SECRET_KEY=change-me-use-a-long-random-secret
@@ -128,148 +122,25 @@ UPLOAD_LOCAL_DIR=storage/uploads
 
 DEFAULT_ADMIN_EMAIL=admin@example.com
 DEFAULT_ADMIN_PASSWORD=change-me
-DEFAULT_ADMIN_FULL_NAME=AuditIA Admin
+DEFAULT_ADMIN_FULL_NAME=SecureMAX Admin
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-3.5-turbo
 OPENAI_TEMPERATURE=0.1
-CHROMA_COLLECTION=auditia_documents
+CHROMA_COLLECTION=securemax_documents
 ```
 
-No guardes claves reales en Git. Si una API key fue expuesta, rotala desde el proveedor y usa la nueva solo como variable de entorno.
+No subas claves reales al repositorio. Las credenciales de MongoDB, OpenAI, JWT y AWS deben configurarse como variables de entorno o secrets.
 
-## Deploy En Render
+## Endpoints Principales
 
-El proyecto fija Python 3.13.4 con:
-
-```text
-.python-version
-runtime.txt
-```
-
-Render debe usar Python 3.13.4. No uses Python 3.14 por ahora, porque `pydantic-core==2.27.2` puede intentar compilarse desde Rust durante el build.
-
-Configuracion recomendada en Render:
-
-```bash
-Build Command: pip install -r requirements.txt
-Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-Si Render insiste en Python 3.14, agrega:
-
-```env
-PYTHON_VERSION=3.13.4
-```
-
-Backend desplegado:
-
-```text
-https://demo-hackaithon-backend.onrender.com
-```
-
-## Deploy En Elastic Beanstalk
-
-Seleccion recomendada al crear la aplicacion:
-
-```text
-Platform: Python
-Platform branch: Python 3.13 running on 64bit Amazon Linux 2023
-Platform version: Recommended
-```
-
-La version `4.x.x` que muestra Elastic Beanstalk es la version de la plataforma de AWS, no la version exacta de Python. El proyecto se analiza y desarrolla como Python 3.13.
-
-El repositorio incluye:
-
-- `Procfile`: arranca FastAPI con Gunicorn + Uvicorn worker en el puerto `8000`.
-- `.ebignore`: evita subir `.venv`, caches, archivos locales, Sonar y carpetas que no son necesarias en produccion.
-- `requirements.txt`: incluye `gunicorn` para el servidor de produccion.
-
-Configuracion recomendada en Elastic Beanstalk:
-
-```text
-Health check path: /health
-Environment type: Single instance para pruebas, Load balanced para produccion
-```
-
-Variables de entorno que debes configurar en Beanstalk, no en Git:
-
-```env
-ENVIRONMENT=production
-API_PREFIX=/api
-BACKEND_CORS_ORIGINS=https://tu-frontend.vercel.app,http://localhost:5173
-MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net
-MONGODB_DB=auditoria_siniestros
-JWT_SECRET_KEY=usa-un-secreto-largo
-AUTH_REQUIRED=false
-OPENAI_API_KEY=tu_api_key_si_usas_ia
-OPENAI_MODEL=gpt-3.5-turbo
-OPENAI_TEMPERATURE=0.1
-UPLOAD_LOCAL_DIR=storage/uploads
-```
-
-Si subes un `.zip` desde la consola de AWS, comprime los archivos desde la raiz del repo. El zip debe contener directamente `app/`, `requirements.txt` y `Procfile`, no una carpeta contenedora.
-
-### Deploy Automatico Con GitHub Actions
-
-Para no subir ZIP local manualmente, crea primero el entorno en Elastic Beanstalk con `Aplicacion de ejemplo`. Eso crea la infraestructura. Luego GitHub Actions reemplaza esa app de ejemplo con el backend real.
-
-El workflow `.github/workflows/deploy-beanstalk.yml` corre automaticamente cuando `SonarCloud` termina correctamente en `main`, y tambien se puede ejecutar manualmente.
-
-Configura estos secrets en GitHub:
-
-```text
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-```
-
-Configura estas variables en GitHub:
-
-```text
-AWS_REGION=us-east-1
-EB_APPLICATION_NAME=nombre-de-tu-aplicacion
-EB_ENVIRONMENT_NAME=nombre-de-tu-entorno
-EB_S3_BUCKET=nombre-del-bucket-para-versiones
-```
-
-El bucket debe existir en la misma region. El workflow crea un ZIP desde Git, lo sube a S3, crea una version de aplicacion y actualiza el environment de Elastic Beanstalk.
-
-## Integracion Con Frontend
-
-El frontend React/Vite debe usar:
-
-```env
-VITE_API_BASE_URL=https://demo-hackaithon-backend.onrender.com/api
-```
-
-Para desarrollo local:
-
-```env
-VITE_API_BASE_URL=http://localhost:8000/api
-```
-
-La URL base debe incluir `/api`. El healthcheck no lleva `/api`:
+### Salud
 
 ```text
 GET /health
 ```
 
-El frontend no debe guardar credenciales de MongoDB, OpenAI ni secretos JWT. Todo secreto vive en el backend.
-
-## CORS
-
-En Render, `BACKEND_CORS_ORIGINS` debe incluir el dominio real del frontend:
-
-```env
-BACKEND_CORS_ORIGINS=https://demo-hack-a-ithon-frontend.vercel.app,http://localhost:5173
-```
-
-Si el dominio de Vercel cambia, tambien debe actualizarse esta variable.
-
-## Autenticacion
-
-Endpoints:
+### Autenticacion
 
 ```text
 POST /api/auth/register
@@ -277,94 +148,31 @@ POST /api/auth/login
 GET /api/auth/me
 ```
 
-Login:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "password"
-}
-```
-
-Respuesta:
-
-```json
-{
-  "accessToken": "...",
-  "tokenType": "bearer",
-  "user": {
-    "id": "...",
-    "email": "admin@example.com",
-    "fullName": "AuditIA Admin",
-    "role": "ADMIN",
-    "isActive": true
-  }
-}
-```
-
-Cuando `AUTH_REQUIRED=true`, el frontend debe enviar:
+Cuando `AUTH_REQUIRED=true`, los endpoints protegidos requieren:
 
 ```http
 Authorization: Bearer <accessToken>
 ```
 
-En modo demo o desarrollo puede usarse:
+Para demo o desarrollo puede mantenerse:
 
 ```env
 AUTH_REQUIRED=false
 ```
 
-## Endpoints
-
-Health:
-
-```text
-GET /health
-```
-
-Casos:
+### Casos
 
 ```text
 GET /api/cases
 POST /api/cases
 GET /api/cases/{caseId}
 PATCH /api/cases/{caseId}/status
+GET /api/cases/documents
 GET /api/cases/{caseId}/documents
 POST /api/cases/{caseId}/documents
 ```
 
-Auditorias:
-
-```text
-POST /api/audit/batch
-POST /api/audit/{caseId}
-POST /api/audit/{caseId}/final-verdict
-GET /api/audit/{caseId}/latest
-GET /api/audit/{caseId}/history
-```
-
-Reglas de negocio:
-
-```text
-GET /api/business-rules
-POST /api/business-rules
-PUT /api/business-rules/{ruleId}
-PATCH /api/business-rules/{ruleId}/toggle
-DELETE /api/business-rules/{ruleId}
-```
-
-Estadisticas:
-
-```text
-GET /api/statistics/dashboard
-GET /api/statistics/denial-reasons
-```
-
-## Contrato Para Frontend
-
-La API responde en `camelCase`, aunque internamente Python use `snake_case`.
-
-Ejemplo para crear caso:
+Ejemplo para crear un caso:
 
 ```json
 {
@@ -383,35 +191,22 @@ Ejemplo para crear caso:
 }
 ```
 
-Respuesta de listado:
+### Auditorias
 
-```json
-{
-  "cases": []
-}
+```text
+POST /api/audit/batch
+GET /api/audit/history
+POST /api/audit/{caseId}
+POST /api/audit/{caseId}/final-verdict
+GET /api/audit/{caseId}/latest
+GET /api/audit/{caseId}/history
 ```
 
-Respuesta de dashboard sin datos:
+Respuesta esperada de auditoria:
 
 ```json
 {
-  "totalCases": 0,
-  "approvedCases": 0,
-  "observedCases": 0,
-  "deniedCases": 0,
-  "humanReviewCases": 0,
-  "approvalRate": 0,
-  "latestAudits": []
-}
-```
-
-El frontend debe tratar listas vacias y contadores en cero como estados validos, no como errores de conexion.
-
-Respuesta de auditoria:
-
-```json
-{
-  "caseId": "SIN-2026-004",
+  "caseId": "SIN-2026-001",
   "status": "OBSERVADO",
   "riskScore": 75,
   "summary": "Auditoria completada con hallazgos.",
@@ -423,6 +218,23 @@ Respuesta de auditoria:
   "topReasons": [],
   "recommendation": "Solicitar sustento adicional."
 }
+```
+
+### Reglas De Negocio
+
+```text
+GET /api/business-rules
+POST /api/business-rules
+PUT /api/business-rules/{ruleId}
+PATCH /api/business-rules/{ruleId}/toggle
+DELETE /api/business-rules/{ruleId}
+```
+
+### Estadisticas
+
+```text
+GET /api/statistics/dashboard
+GET /api/statistics/denial-reasons
 ```
 
 ## Carga De Documentos
@@ -438,10 +250,10 @@ Campos:
 
 ```text
 files: uno o varios archivos
-documents: JSON serializado con metadata de cada archivo
+documents: JSON serializado con la metadata de cada archivo
 ```
 
-Ejemplo de `documents`:
+Ejemplo de metadata:
 
 ```json
 [
@@ -454,27 +266,15 @@ Ejemplo de `documents`:
 ]
 ```
 
-La cantidad de items en `documents` debe coincidir con la cantidad de archivos enviados en `files`.
+La cantidad de objetos en `documents` debe coincidir con la cantidad de archivos enviados en `files`.
 
-Los archivos se guardan en:
+Los archivos se almacenan localmente en:
 
 ```text
 storage/uploads/{caseId}/{documentId}/{filename}
 ```
 
-Cada documento queda asociado al caso en MongoDB con metadata, texto extraido y estado de parseo.
-
-Estados de parseo:
-
-```text
-RECIBIDO
-PROCESANDO
-PROCESADO
-OCR_PENDIENTE
-ERROR
-```
-
-## Estados Y Enums
+## Estados Y Catalogos
 
 Estados de caso:
 
@@ -520,45 +320,87 @@ DOCUMENTO_OBLIGATORIO
 PORCENTAJE_VARIACION
 ```
 
-Operadores:
+## Integracion Con Frontend
+
+El frontend debe apuntar al backend usando una URL base que incluya `/api`.
+
+Local:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+Produccion:
+
+```env
+VITE_API_BASE_URL=https://demo-hackaithon-backend.onrender.com/api
+```
+
+El healthcheck no usa `/api`:
 
 ```text
-MAYOR_QUE
-MENOR_QUE
-IGUAL_A
-DIFERENTE_DE
-CONTIENE
-NO_CONTIENE
+GET /health
 ```
 
-Severidades:
+El frontend no debe guardar credenciales de MongoDB, OpenAI, JWT ni AWS. Esos secretos pertenecen al backend.
+
+## Deploy
+
+### Render
+
+El proyecto fija Python 3.13.4 con:
 
 ```text
-BAJA
-MEDIA
-ALTA
-CRITICA
+.python-version
+runtime.txt
 ```
 
-## Manejo De Errores
+Configuracion recomendada:
 
-Formato esperado:
-
-```json
-{
-  "detail": "Mensaje del error."
-}
+```bash
+Build Command: pip install -r requirements.txt
+Start Command: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Codigos comunes:
+Si Render intenta usar otra version:
+
+```env
+PYTHON_VERSION=3.13.4
+```
+
+### AWS Elastic Beanstalk
+
+El repositorio incluye:
+
+- `Procfile` para iniciar FastAPI con Gunicorn + Uvicorn Worker.
+- `.ebignore` para excluir entornos virtuales, caches y archivos locales.
+- `requirements.txt` con dependencias de produccion.
+
+Configuracion recomendada:
 
 ```text
-401: no autenticado o token invalido
-403: sin permisos
-404: recurso no encontrado
-422: payload invalido
-500: error interno
+Platform: Python 3.13 running on 64bit Amazon Linux 2023
+Health check path: /health
+Environment type: Single instance para pruebas, Load balanced para produccion
 ```
+
+Variables importantes en Beanstalk:
+
+```env
+ENVIRONMENT=production
+API_PREFIX=/api
+BACKEND_CORS_ORIGINS=https://tu-frontend.vercel.app,http://localhost:5173
+MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net
+MONGODB_DB=securemax_siniestros
+JWT_SECRET_KEY=usa-un-secreto-largo
+AUTH_REQUIRED=false
+OPENAI_API_KEY=tu_api_key_si_usas_ia
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_TEMPERATURE=0.1
+UPLOAD_LOCAL_DIR=storage/uploads
+```
+
+Si subes un `.zip` manualmente, comprimelo desde la raiz del repositorio. El zip debe contener directamente `app/`, `requirements.txt` y `Procfile`.
 
 ## Verificacion
 
@@ -574,78 +416,66 @@ Revisar dependencias:
 python -m pip check
 ```
 
-Probar OpenAI:
-
-```bash
-python test_openai.py
-```
-
 Cargar datos demo:
 
 ```bash
 python -m app.database.seed_demo
 ```
 
-Probar API desplegada:
+Probar healthcheck:
 
 ```bash
-curl https://demo-hackaithon-backend.onrender.com/health
-curl https://demo-hackaithon-backend.onrender.com/api/cases
-curl https://demo-hackaithon-backend.onrender.com/api/statistics/dashboard
-curl https://demo-hackaithon-backend.onrender.com/api/business-rules
+curl http://localhost:8000/health
 ```
 
 ## Problemas Comunes
-
-### `ImportError: cannot import name 'StrEnum'`
-
-Estas usando Python 3.10 o menor. Usa Python 3.11+; recomendado Python 3.13.4.
-
-### Render usa Python 3.14
-
-Verifica `.python-version`, `runtime.txt` y la variable:
-
-```env
-PYTHON_VERSION=3.13.4
-```
-
-Luego ejecuta un deploy con cache limpia.
-
-### Error de `pydantic-core` con Rust o maturin
-
-Ocurre porque Render intenta instalar con Python 3.14 y no encuentra wheel compatible para la version fijada. La solucion es usar Python 3.13.4.
-
-### Error de Passlib con bcrypt
-
-`passlib==1.7.4` debe usarse con:
-
-```text
-bcrypt==4.0.1
-```
 
 ### El frontend no conecta
 
 Revisar:
 
-- `VITE_API_BASE_URL=https://demo-hackaithon-backend.onrender.com/api`
-- redeploy del frontend despues de cambiar variables
-- `BACKEND_CORS_ORIGINS` en Render
-- pestana Network del navegador para ver la URL exacta llamada por React
+- que el backend este ejecutandose;
+- que `VITE_API_BASE_URL` incluya `/api`;
+- que `BACKEND_CORS_ORIGINS` incluya el dominio real del frontend;
+- la pestana Network del navegador para confirmar que URL esta llamando React.
 
 ### MongoDB no conecta
 
 Revisar:
 
-- `MONGODB_URI`
-- usuario y password de MongoDB Atlas
-- whitelist de IPs en Atlas
-- nombre de base de datos en `MONGODB_DB`
+- `MONGODB_URI`;
+- usuario y password de MongoDB Atlas;
+- whitelist de IPs en Atlas;
+- nombre de base de datos en `MONGODB_DB`.
+
+### Error de Python o pydantic-core
+
+Usa Python 3.13.4. Evita Python 3.14 si las dependencias fijadas aun no tienen wheels compatibles.
+
+### Error de Passlib con bcrypt
+
+Este proyecto usa:
+
+```text
+passlib==1.7.4
+bcrypt==4.0.1
+```
 
 ## Seguridad
 
 - No versionar `.env`.
-- No poner API keys en React.
-- Rotar claves expuestas.
+- No poner API keys en el frontend.
 - Cambiar `JWT_SECRET_KEY` en produccion.
-- Activar `AUTH_REQUIRED=true` cuando el flujo de login ya este conectado.
-- Mantener `OPENAI_API_KEY` solo en Render o entorno local.
+- Rotar inmediatamente cualquier clave expuesta.
+- Mantener `OPENAI_API_KEY` solo en el backend.
+- Activar `AUTH_REQUIRED=true` cuando el flujo de autenticacion este listo para produccion.
+
+## Calidad
+
+El repositorio tiene configuracion para analisis estatico con SonarCloud mediante `sonar-project.properties` y workflow de GitHub Actions.
+
+Comando local util:
+
+```bash
+python -m compileall app test_openai.py
+```

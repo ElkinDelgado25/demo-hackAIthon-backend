@@ -8,13 +8,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "AuditIA API"
+    app_name: str = "SecureMAX API"
     environment: str = "development"
     api_prefix: str = "/api"
     backend_cors_origins: list[str] | str = Field(default_factory=lambda: ["http://localhost:5173"])
 
     mongodb_uri: str = "mongodb://localhost:27017"
-    mongodb_db: str = "auditoria_siniestros"
+    mongodb_db: str = "securemax_siniestros"
 
     auth_required: bool = False
     jwt_secret_key: str = "change-me-use-a-long-random-secret"
@@ -27,12 +27,12 @@ class Settings(BaseSettings):
 
     default_admin_email: str = "admin@example.com"
     default_admin_password: str = "change-me"
-    default_admin_full_name: str = "AuditIA Admin"
+    default_admin_full_name: str = "SecureMAX Admin"
 
     openai_api_key: str | None = None
     openai_model: str = "gpt-3.5-turbo"
     openai_temperature: float = 0.1
-    chroma_collection: str = "auditia_documents"
+    chroma_collection: str = "securemax_documents"
 
     @field_validator("backend_cors_origins", "upload_allowed_extensions", mode="before")
     @classmethod

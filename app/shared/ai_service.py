@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 
 from app.core.config import settings
 
-AUDITIA_SYSTEM_MESSAGE = """Eres AuditIA, un agente auditor especializado exclusivamente en siniestros vehiculares y auditoria documental para aseguradoras.
+SECUREMAX_SYSTEM_MESSAGE = """Eres SecureMAX, un agente auditor especializado exclusivamente en siniestros vehiculares y auditoria documental para aseguradoras.
 
 Tu funcion es analizar:
 
@@ -101,7 +101,7 @@ class AIService:
 
         try:
             response = await self.llm.apredict_messages([
-                SystemMessage(content=AUDITIA_SYSTEM_MESSAGE),
+                SystemMessage(content=SECUREMAX_SYSTEM_MESSAGE),
                 HumanMessage(content=prompt),
             ])
             return json.loads(_clean_json(response.content))
@@ -138,7 +138,7 @@ class AIService:
 
         try:
             response = await self.llm.apredict_messages([
-                SystemMessage(content=AUDITIA_SYSTEM_MESSAGE),
+                SystemMessage(content=SECUREMAX_SYSTEM_MESSAGE),
                 HumanMessage(content=prompt),
             ])
             return json.loads(_clean_json(response.content))
